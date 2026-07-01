@@ -1,0 +1,197 @@
+using System.Diagnostics;
+using System.Text;
+using CodexSwitcher.Core.Abstractions;
+
+namespace CodexSwitcher.Infra.Codex;
+
+/// <summary>
+/// Executa o binário <c>codex</c> resolvido do PATH (ou de um override), definindo
+/// <c>CODEX_HOME</c> <b>apenas</b> no processo filho — nunca globalmente. Ver §5, §6 e ponto 7.
+/// Suporta os wrappers do npm no Windows (codex.exe / codex.cmd / codex.ps1).
+/// </summary>
+public sealed class CodexCliRunner : ICodexCli
+{
+    private enum Launcher { Executable, Cmd, PowerShell }
+
+    private readonly string? _resolvedPath;
+    private readonly Launcher _launcher;
+
+    public CodexCliRunner(string? executableOverride = null)
+    {
+        _resolvedPath = ResolveCodexPath(executableOverride);
+        _launcher = _resolvedPath is null ? Launcher.Executable : LauncherFor(_resolvedPath);
+    }
+
+    public bool IsAvailable => _resolvedPath is not null;
+    public string? ResolvedPath => _resolvedPath;
+
+    public Task<CodexCliResult> ExecAsync(string prompt, string codexHome, TimeSpan timeout,
+        CancellationToken cancellationToken = default) =>
+        RunAsync(["exec", "-a", "never", "-s", "read-only", prompt], codexHome, timeout, null, cancellationToken);
+
+    public Task<CodexCliResult> LoginStatusAsync(string codexHome, CancellationToken cancellationToken = default) =>
+        RunAsync(["login", "status"], codexHome, TimeSpan.FromSeconds(20), null, cancellationToken);
+
+    public void LaunchDesktopApp()
+    {
+        if (_resolvedPath is null) return;
+
+        var psi = new ProcessStartInfo { UseShellExecute = false, CreateNoWindow = true };
+        switch (_launcher)
+        {
+            case Launcher.Cmd:
+                psi.FileName = "cmd.exe";
+                psi.ArgumentList.Add("/c");
+                psi.ArgumentList.Add(_resolvedPath);
+                break;
+            case Launcher.PowerShell:
+                psi.FileName = "powershell.exe";
+                psi.ArgumentList.Add("-NoProfile");
+                psi.ArgumentList.Add("-ExecutionPolicy");
+                psi.ArgumentList.Add("Bypass");
+                psi.ArgumentList.Add("-File");
+                psi.ArgumentList.Add(_resolvedPath);
+                break;
+            default:
+                psi.FileName = _resolvedPath;
+                break;
+        }
+        psi.ArgumentList.Add("app");
+
+        try { Process.Start(psi); }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { }
+    }
+
+    public Task<CodexCliResult> LoginAsync(string codexHome, Action<string>? onOutputLine,
+        TimeSpan timeout, CancellationToken cancellationToken = default) =>
+        // Device-auth NÃO abre o navegador do sistema: imprime uma URL + código que abrimos na
+        // sessão limpa do WebView2 (modo visitante). Ver BUSINESS_RULES.md §5 e ponto 13.
+        RunAsync(["login", "--device-auth"], codexHome, timeout, onOutputLine, cancellationToken);
+
+    private async Task<CodexCliResult> RunAsync(
+        IReadOnlyList<string> codexArgs, string codexHome, TimeSpan timeout,
+        Action<string>? onOutputLine, CancellationToken cancellationToken)
+    {
+        if (_resolvedPath is null)
+            return new CodexCliResult(-1, string.Empty, "codex não encontrado no PATH");
+
+        var psi = new ProcessStartInfo
+        {
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+            WorkingDirectory = codexHome,
+        };
+
+        switch (_launcher)
+        {
+            case Launcher.Cmd:
+                psi.FileName = "cmd.exe";
+                psi.ArgumentList.Add("/c");
+                psi.ArgumentList.Add(_resolvedPath);
+                break;
+            case Launcher.PowerShell:
+                psi.FileName = "powershell.exe";
+                psi.ArgumentList.Add("-NoProfile");
+                psi.ArgumentList.Add("-ExecutionPolicy");
+                psi.ArgumentList.Add("Bypass");
+                psi.ArgumentList.Add("-File");
+                psi.ArgumentList.Add(_resolvedPath);
+                break;
+            default:
+                psi.FileName = _resolvedPath;
+                break;
+        }
+
+        foreach (var a in codexArgs)
+            psi.ArgumentList.Add(a);
+
+        // CODEX_HOME somente no filho (ponto 7).
+        psi.Environment["CODEX_HOME"] = codexHome;
+
+        using var process = new Process { StartInfo = psi };
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data is null) return;
+            stdout.AppendLine(e.Data);
+            onOutputLine?.Invoke(e.Data);
+        };
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is null) return;
+            stderr.AppendLine(e.Data);
+            onOutputLine?.Invoke(e.Data);
+        };
+
+        try
+        {
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(timeout);
+
+            try
+            {
+                await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                TryKill(process);
+                return new CodexCliResult(-2, stdout.ToString(), "tempo esgotado ao executar codex");
+            }
+
+            return new CodexCliResult(process.ExitCode, stdout.ToString(), stderr.ToString());
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return new CodexCliResult(-1, string.Empty, "falha ao iniciar o processo codex");
+        }
+    }
+
+    private static void TryKill(Process process)
+    {
+        try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
+        catch (InvalidOperationException) { }
+        catch (System.ComponentModel.Win32Exception) { }
+    }
+
+    private static Launcher LauncherFor(string path) =>
+        Path.GetExtension(path).ToLowerInvariant() switch
+        {
+            ".cmd" or ".bat" => Launcher.Cmd,
+            ".ps1" => Launcher.PowerShell,
+            _ => Launcher.Executable,
+        };
+
+    private static string? ResolveCodexPath(string? overridePath)
+    {
+        if (!string.IsNullOrWhiteSpace(overridePath) && File.Exists(overridePath))
+            return overridePath;
+
+        var pathVar = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        var dirs = pathVar.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        // Preferir .exe, depois .cmd/.bat, depois .ps1 (wrappers do npm), depois sem extensão.
+        string[] candidates = ["codex.exe", "codex.cmd", "codex.bat", "codex.ps1", "codex"];
+
+        foreach (var candidate in candidates)
+        {
+            foreach (var dir in dirs)
+            {
+                try
+                {
+                    var full = Path.Combine(dir, candidate);
+                    if (File.Exists(full))
+                        return full;
+                }
+                catch (ArgumentException) { /* diretório inválido no PATH */ }
+            }
+        }
+
+        return null;
+    }
+}

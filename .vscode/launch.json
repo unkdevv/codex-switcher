@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run CodexSwitcher (Debug)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/CodexSwitcher.App/bin/Debug/net10.0-windows10.0.19041.0/win-x64/CodexSwitcher.App.exe",
+      "cwd": "${workspaceFolder}/src/CodexSwitcher.App",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    }
+  ]
+}

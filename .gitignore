@@ -1,0 +1,71 @@
+# ---------- .NET build output ----------
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+publish/
+*.dll
+*.pdb
+*.exe
+!docs/**/*.png
+
+# ---------- NuGet ----------
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+project.assets.json
+*.nuget.props
+*.nuget.targets
+
+# ---------- Visual Studio ----------
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.vspscc
+*.vssscc
+*.vcxproj.filters
+
+# ---------- Rider / JetBrains ----------
+.idea/
+*.DotSettings.user
+
+# ---------- Visual Studio Code ----------
+# Keep shared run/build config, ignore local/personal files
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ---------- WinUI / MSIX / generated ----------
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+AppPackages/
+BundleArtifacts/
+Generated Files/
+*.g.cs
+*.g.i.cs
+
+# ---------- OS / misc ----------
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.log
+*.tmp
+
+# ---------- App runtime data (never commit secrets) ----------
+# The encrypted vault lives in %LOCALAPPDATA%\CodexSwitcher, not in the repo,
+# but guard against accidental copies:
+**/vault/
+**/auth.json
+**/*.auth.json

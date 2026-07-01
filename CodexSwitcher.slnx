@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CodexSwitcher.App/CodexSwitcher.App.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="src/CodexSwitcher.Core/CodexSwitcher.Core.csproj" />
+    <Project Path="src/CodexSwitcher.Infra/CodexSwitcher.Infra.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CodexSwitcher.Core.Tests/CodexSwitcher.Core.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/src/CodexSwitcher.App/CodexSwitcher.App.csproj",
+        "-r",
+        "win-x64"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "test",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "${workspaceFolder}/CodexSwitcher.slnx"],
+      "problemMatcher": "$msCompile",
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "publish-single-exe",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "publish",
+        "${workspaceFolder}/src/CodexSwitcher.App/CodexSwitcher.App.csproj",
+        "-c",
+        "Release",
+        "-r",
+        "win-x64",
+        "-p:PublishSingleFile=true",
+        "-p:IncludeNativeLibrariesForSelfExtract=true",
+        "-p:DebugType=none",
+        "-p:DebugSymbols=false"
+      ],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}
