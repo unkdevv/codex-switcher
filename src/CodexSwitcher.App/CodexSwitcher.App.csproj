@@ -5,6 +5,10 @@
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>CodexSwitcher.App</RootNamespace>
+    <!-- WinUI 3 (unpackaged) ties resources.pri/manifest lookups to the built exe's own name at
+         build time; renaming the exe after publish breaks activation (Microsoft.UI.Xaml.dll crash).
+         Set the name here so the produced binary is always CodexSwitcher.exe. -->
+    <AssemblyName>CodexSwitcher</AssemblyName>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>

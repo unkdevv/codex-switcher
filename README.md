@@ -1,7 +1,7 @@
 # Codex Account Switcher
 
-> Switch between multiple **OpenAI Codex** accounts on Windows with one click — **without
-> re-doing the OAuth login every time.**
+> Switch between multiple **OpenAI Codex** accounts on Windows with one click.
+> **No need to redo the OAuth login every time.**
 
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6?logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
@@ -42,24 +42,24 @@ treating your tokens like passwords.
 
 ## Features
 
-- **Encrypted vault** — every `auth.json` is encrypted at rest with Windows **DPAPI**
-  (`CurrentUser` scope). Tokens are never logged.
-- **One-click switch** — writes the chosen account into the active slot **atomically**, with an
+- **Encrypted vault**. Every `auth.json` is encrypted at rest with Windows **DPAPI**
+  (`CurrentUser` scope), and tokens are never logged.
+- **One-click switch**. Writes the chosen account into the active slot **atomically**, with an
   automatic encrypted backup and full **rollback** if anything fails.
-- **Never lose a login** — before overwriting, the current active account is **written back** to
+- **Never lose a login**. Before overwriting, the current active account is **written back** to
   the vault, preserving tokens the Codex CLI rotated while you were using it.
-- **Clean-session login** — adding an account opens a **disposable, incognito-style** WebView2
-  session (no shared cookies/history). The OAuth URL comes from the `codex app-server` login flow
-  and is opened only inside that clean WebView2 (never the system browser), so one account never
-  contaminates another, and no ChatGPT "device code" security setting is required.
-- **Built-in 2FA code generator** — a small tool (RFC 6238 TOTP) to paste a 2FA secret key and get a
-  rotating 6-digit code with a live expiry countdown; the key stays in memory only.
-- **Background refresh** — a scheduled task renews each account before the ~8-day expiry window,
-  isolated via a temporary `CODEX_HOME` (never touching the real active slot).
-- **Closes & reopens Codex apps** — detects running Codex desktop/CLI processes, asks for
-  confirmation, closes them for the swap and reopens the desktop app afterwards.
-- **Automatic language** — Portuguese on Brazilian/`pt` systems, English everywhere else.
-- **Native Fluent UI** — Mica, dark/light, rounded corners, relative dates, health badges.
+- **Clean-session login**. Adding an account opens a **disposable, incognito-style** WebView2
+  session with no shared cookies or history. The OAuth URL comes from the `codex app-server` login
+  flow and is opened only inside that clean WebView2, never the system browser, so one account
+  never contaminates another and no ChatGPT "device code" security setting is required.
+- **Built-in 2FA code generator**. A small tool (RFC 6238 TOTP) that turns a pasted 2FA secret key
+  into a rotating 6-digit code with a live expiry countdown; the key stays in memory only.
+- **Background refresh**. A scheduled task renews each account before the ~8-day expiry window,
+  isolated through a temporary `CODEX_HOME` that never touches the real active slot.
+- **Closes and reopens Codex apps**. Detects running Codex desktop/CLI processes, asks for
+  confirmation, closes them for the swap, and reopens the desktop app afterward.
+- **Automatic language**. Portuguese on Brazilian/`pt` systems, English everywhere else.
+- **Native Fluent UI**. Mica, dark/light, rounded corners, relative dates, health badges.
 
 ## How it works
 
@@ -68,8 +68,6 @@ encrypted copy of each account's `auth.json` in its vault (the **source of truth
 swap as a reversible transaction: **confirm → close Codex apps → write-back current → backup →
 write new slot (atomic) → update metadata → reopen apps**. If any step fails, the original slot is
 restored from the backup and the apps are reopened on the original account.
-
-See [`BUSINESS_RULES.md`](BUSINESS_RULES.md) for the complete behavior spec and every edge case.
 
 ## Requirements
 
@@ -80,15 +78,13 @@ See [`BUSINESS_RULES.md`](BUSINESS_RULES.md) for the complete behavior spec and 
 
 ## Getting started
 
-Grab a build (or produce one — see below) and run `CodexSwitcher.App.exe`. On first launch the app
+Grab a build, or produce one using the steps below, and run `CodexSwitcher.exe`. On first launch the app
 offers to **import the account already logged into Codex** on your machine, or to **add a new one**
 via a clean OAuth session.
 
 ## Building
 
-> **Portuguese, step-by-step guide (for the author): [`COMO-COMPILAR.md`](COMO-COMPILAR.md).**
-
-### Option A — Command line (.NET CLI)
+### Option A: Command line (.NET CLI)
 
 ```powershell
 # Build everything
@@ -101,19 +97,19 @@ dotnet test CodexSwitcher.slnx
 dotnet run --project src/CodexSwitcher.App/CodexSwitcher.App.csproj -r win-x64
 ```
 
-### Option B — Visual Studio Code
+### Option B: Visual Studio Code
 
 1. Install the **C# Dev Kit** extension.
 2. Open the project folder. The repo ships a `.vscode/launch.json` and `tasks.json`.
 3. Press **F5** (runs the `build` task, then launches the app). Or run the **publish-single-exe**
    task from *Terminal → Run Task*.
 
-### Option C — Visual Studio 2022
+### Option C: Visual Studio 2022
 
 Open `CodexSwitcher.slnx`, set **CodexSwitcher.App** as the startup project, choose the **x64**
 configuration and press **F5**.
 
-### Option D — Single self-contained `.exe`
+### Option D: Single self-contained `.exe`
 
 Produces **one** file (no .NET required on the target, nothing else alongside):
 
@@ -124,8 +120,9 @@ dotnet publish src/CodexSwitcher.App/CodexSwitcher.App.csproj -c Release -r win-
   -p:DebugType=none -p:DebugSymbols=false
 ```
 
-Output: `src/CodexSwitcher.App/bin/Release/net10.0-windows10.0.19041.0/win-x64/publish/CodexSwitcher.App.exe`
-(~210 MB, self-contained). Full details in [`COMO-COMPILAR.md`](COMO-COMPILAR.md).
+Output: `src/CodexSwitcher.App/bin/Release/net10.0-windows10.0.19041.0/win-x64/publish/CodexSwitcher.exe`
+(~210 MB, self-contained). Don't rename the file after publishing: this unpackaged WinUI 3 app ties
+its resource/manifest lookup to the exe's own filename, and renaming it breaks activation.
 
 ## Configuration
 
@@ -138,7 +135,7 @@ Output: `src/CodexSwitcher.App/bin/Release/net10.0-windows10.0.19041.0/win-x64/p
 
 - Tokens are treated like passwords: **encrypted at rest** (DPAPI `CurrentUser`), **never logged**,
   kept in memory as briefly as possible.
-- DPAPI `CurrentUser` ties decryption to the same Windows user on the same machine — the vault is
+- DPAPI `CurrentUser` ties decryption to the same Windows user on the same machine, so the vault is
   **not portable** across machines/users (by design).
 - The only places a token exists in plaintext are the active slot required by Codex and the
   short-lived ephemeral login/refresh folders.
@@ -152,9 +149,7 @@ src/
   CodexSwitcher.Infra    DPAPI, atomic file system, config.toml, Codex CLI, process manager, scheduler
   CodexSwitcher.App      WinUI 3 UI (views, view models, ephemeral login, DI, localization)
 tests/
-  CodexSwitcher.Core.Tests   xUnit — vault, atomic writes, switch/rollback, refresh, reconciliation
-BUSINESS_RULES.md        Behavior specification
-COMO-COMPILAR.md         Build guide (Portuguese)
+  CodexSwitcher.Core.Tests   xUnit: vault, atomic writes, switch/rollback, refresh, reconciliation
 ```
 
 ## Tech stack

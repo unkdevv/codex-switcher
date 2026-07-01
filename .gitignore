@@ -69,4 +69,7 @@ $RECYCLE.BIN/
 **/vault/
 **/auth.json
 **/*.auth.json
+
+# ---------- Internal control docs (author-only, never published) ----------
 COMO-COMPILAR.md
+BUSINESS_RULES.md
