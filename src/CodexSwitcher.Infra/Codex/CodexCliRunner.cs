@@ -13,6 +13,8 @@ public sealed class CodexCliRunner : ICodexCli
 {
     private enum Launcher { Executable, Cmd, PowerShell }
 
+    internal static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
     private readonly string? _resolvedPath;
     private readonly Launcher _launcher;
 
@@ -37,12 +39,49 @@ public sealed class CodexCliRunner : ICodexCli
         if (_resolvedPath is null) return;
 
         var psi = new ProcessStartInfo { UseShellExecute = false, CreateNoWindow = true };
+        ApplyLauncher(psi);
+        psi.ArgumentList.Add("app");
+
+        try { Process.Start(psi); }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { }
+    }
+
+    public async Task<ICodexLoginSession> StartChatGptLoginAsync(
+        string codexHome, CancellationToken cancellationToken = default)
+    {
+        if (_resolvedPath is null)
+            throw new InvalidOperationException("codex não encontrado no PATH");
+
+        var psi = new ProcessStartInfo
+        {
+            UseShellExecute = false,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+            WorkingDirectory = codexHome,
+            StandardOutputEncoding = Utf8NoBom,
+            StandardErrorEncoding = Utf8NoBom,
+            StandardInputEncoding = Utf8NoBom,
+        };
+        ApplyLauncher(psi);
+        psi.ArgumentList.Add("app-server");
+        // CODEX_HOME somente no filho (ponto 7); o app-server escreve o auth.json aqui ao concluir.
+        psi.Environment["CODEX_HOME"] = codexHome;
+
+        return await CodexAppServerLoginSession.StartAsync(psi, codexHome, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>Define FileName + argumentos iniciais conforme o wrapper (exe/cmd/ps1) do codex.</summary>
+    private void ApplyLauncher(ProcessStartInfo psi)
+    {
         switch (_launcher)
         {
             case Launcher.Cmd:
                 psi.FileName = "cmd.exe";
                 psi.ArgumentList.Add("/c");
-                psi.ArgumentList.Add(_resolvedPath);
+                psi.ArgumentList.Add(_resolvedPath!);
                 break;
             case Launcher.PowerShell:
                 psi.FileName = "powershell.exe";
@@ -50,23 +89,13 @@ public sealed class CodexCliRunner : ICodexCli
                 psi.ArgumentList.Add("-ExecutionPolicy");
                 psi.ArgumentList.Add("Bypass");
                 psi.ArgumentList.Add("-File");
-                psi.ArgumentList.Add(_resolvedPath);
+                psi.ArgumentList.Add(_resolvedPath!);
                 break;
             default:
-                psi.FileName = _resolvedPath;
+                psi.FileName = _resolvedPath!;
                 break;
         }
-        psi.ArgumentList.Add("app");
-
-        try { Process.Start(psi); }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { }
     }
-
-    public Task<CodexCliResult> LoginAsync(string codexHome, Action<string>? onOutputLine,
-        TimeSpan timeout, CancellationToken cancellationToken = default) =>
-        // Device-auth NÃO abre o navegador do sistema: imprime uma URL + código que abrimos na
-        // sessão limpa do WebView2 (modo visitante). Ver BUSINESS_RULES.md §5 e ponto 13.
-        RunAsync(["login", "--device-auth"], codexHome, timeout, onOutputLine, cancellationToken);
 
     private async Task<CodexCliResult> RunAsync(
         IReadOnlyList<string> codexArgs, string codexHome, TimeSpan timeout,
@@ -84,25 +113,7 @@ public sealed class CodexCliRunner : ICodexCli
             WorkingDirectory = codexHome,
         };
 
-        switch (_launcher)
-        {
-            case Launcher.Cmd:
-                psi.FileName = "cmd.exe";
-                psi.ArgumentList.Add("/c");
-                psi.ArgumentList.Add(_resolvedPath);
-                break;
-            case Launcher.PowerShell:
-                psi.FileName = "powershell.exe";
-                psi.ArgumentList.Add("-NoProfile");
-                psi.ArgumentList.Add("-ExecutionPolicy");
-                psi.ArgumentList.Add("Bypass");
-                psi.ArgumentList.Add("-File");
-                psi.ArgumentList.Add(_resolvedPath);
-                break;
-            default:
-                psi.FileName = _resolvedPath;
-                break;
-        }
+        ApplyLauncher(psi);
 
         foreach (var a in codexArgs)
             psi.ArgumentList.Add(a);

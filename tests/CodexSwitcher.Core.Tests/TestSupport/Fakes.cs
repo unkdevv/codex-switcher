@@ -88,15 +88,24 @@ public sealed class FakeCodexCli : ICodexCli
     public Task<CodexCliResult> LoginStatusAsync(string codexHome, CancellationToken cancellationToken = default) =>
         Task.FromResult(StatusResult);
 
-    public Task<CodexCliResult> LoginAsync(string codexHome, Action<string>? onOutputLine,
-        TimeSpan timeout, CancellationToken cancellationToken = default)
+    public Task<ICodexLoginSession> StartChatGptLoginAsync(string codexHome,
+        CancellationToken cancellationToken = default)
     {
         LastCodexHome = codexHome;
-        return Task.FromResult(ExecResult);
+        return Task.FromResult<ICodexLoginSession>(new FakeLoginSession());
     }
 
     public int DesktopAppLaunchCount { get; private set; }
     public void LaunchDesktopApp() => DesktopAppLaunchCount++;
+}
+
+public sealed class FakeLoginSession : ICodexLoginSession
+{
+    public string AuthUrl { get; set; } = "https://auth.openai.com/oauth/authorize?fake=1";
+    public string LoginId { get; set; } = "fake-login-id";
+    public Task<CodexLoginResult> Completion { get; set; } =
+        Task.FromResult(new CodexLoginResult(true));
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 
 /// <summary>Decora um IFileSystem real para injetar falha na escrita atômica de um caminho específico.</summary>

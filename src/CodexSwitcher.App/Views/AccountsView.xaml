@@ -60,6 +60,12 @@
                         <TextBlock Text="{x:Bind Loc.SignInOAuth}" />
                     </StackPanel>
                 </Button>
+                <Button Click="OnOpen2FaClick" ToolTipService.ToolTip="{x:Bind Loc.TwoFactorTooltip}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE72E;" FontSize="14" />
+                        <TextBlock Text="{x:Bind Loc.TwoFactorButton}" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </Grid>
 

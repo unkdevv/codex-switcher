@@ -6,7 +6,7 @@
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6?logo=windows)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![UI](https://img.shields.io/badge/UI-WinUI%203-2E9BFF)
-![Tests](https://img.shields.io/badge/tests-54%20passing-3DDC84)
+![Tests](https://img.shields.io/badge/tests-66%20passing-3DDC84)
 ![Single file](https://img.shields.io/badge/build-single%20.exe-1FD1C1)
 
 Codex Account Switcher is a fast, native **Windows desktop app** (WinUI 3 / .NET 10) that manages
@@ -27,21 +27,24 @@ treating your tokens like passwords.
 
 ## Features
 
-- 🔐 **Encrypted vault** — every `auth.json` is encrypted at rest with Windows **DPAPI**
+- **Encrypted vault** — every `auth.json` is encrypted at rest with Windows **DPAPI**
   (`CurrentUser` scope). Tokens are never logged.
-- ⚡ **One-click switch** — writes the chosen account into the active slot **atomically**, with an
+- **One-click switch** — writes the chosen account into the active slot **atomically**, with an
   automatic encrypted backup and full **rollback** if anything fails.
-- 💾 **Never lose a login** — before overwriting, the current active account is **written back** to
+- **Never lose a login** — before overwriting, the current active account is **written back** to
   the vault, preserving tokens the Codex CLI rotated while you were using it.
-- 🧼 **Clean-session login** — adding an account opens a **disposable, incognito-style** WebView2
-  session (no shared cookies/history) driven by `codex login --device-auth`, so one account never
-  contaminates another.
-- 🔄 **Background refresh** — a scheduled task renews each account before the ~8-day expiry window,
+- **Clean-session login** — adding an account opens a **disposable, incognito-style** WebView2
+  session (no shared cookies/history). The OAuth URL comes from the `codex app-server` login flow
+  and is opened only inside that clean WebView2 (never the system browser), so one account never
+  contaminates another, and no ChatGPT "device code" security setting is required.
+- **Built-in 2FA code generator** — a small tool (RFC 6238 TOTP) to paste a 2FA secret key and get a
+  rotating 6-digit code with a live expiry countdown; the key stays in memory only.
+- **Background refresh** — a scheduled task renews each account before the ~8-day expiry window,
   isolated via a temporary `CODEX_HOME` (never touching the real active slot).
-- 🖥️ **Closes & reopens Codex apps** — detects running Codex desktop/CLI processes, asks for
+- **Closes & reopens Codex apps** — detects running Codex desktop/CLI processes, asks for
   confirmation, closes them for the swap and reopens the desktop app afterwards.
-- 🌍 **Automatic language** — Portuguese on Brazilian/`pt` systems, English everywhere else.
-- 🎨 **Native Fluent UI** — Mica, dark/light, rounded corners, relative dates, health badges.
+- **Automatic language** — Portuguese on Brazilian/`pt` systems, English everywhere else.
+- **Native Fluent UI** — Mica, dark/light, rounded corners, relative dates, health badges.
 
 ## How it works
 
@@ -76,7 +79,7 @@ via a clean OAuth session.
 # Build everything
 dotnet build CodexSwitcher.slnx
 
-# Run the tests (54)
+# Run the tests (66)
 dotnet test CodexSwitcher.slnx
 
 # Run the app

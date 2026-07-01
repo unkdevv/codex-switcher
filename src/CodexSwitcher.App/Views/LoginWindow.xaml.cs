@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using CodexSwitcher.App.Localization;
 using CodexSwitcher.Core.Abstractions;
 using CodexSwitcher.Infra;
@@ -9,16 +8,14 @@ using Microsoft.Web.WebView2.Core;
 namespace CodexSwitcher.App.Views;
 
 /// <summary>
-/// Login efêmero: WebView2 com userDataFolder descartável e único, dirigindo o fluxo do
-/// <c>codex login</c> num CODEX_HOME isolado. Ao fim, captura o auth.json gerado, descarta o
-/// WebView2 e apaga as pastas temporárias. Ver BUSINESS_RULES.md §5 e pontos 7, 8.
+/// Login efêmero: WebView2 com userDataFolder descartável e único (sessão visitante, sem cookies),
+/// dirigindo o fluxo OAuth do <c>codex app-server</c> num CODEX_HOME isolado. O app-server devolve a
+/// URL de autorização (nunca abre o navegador do sistema) e escreve o <c>auth.json</c> ao concluir.
+/// Ao fim, captura o auth.json gerado, descarta o WebView2 e apaga as pastas temporárias.
+/// Ver BUSINESS_RULES.md §5 e a memória [[login-clean-guest-session]].
 /// </summary>
 public sealed partial class LoginWindow : Window
 {
-    private static readonly Regex AnsiRegex = new(@"\x1B\[[0-9;]*m", RegexOptions.Compiled);
-    private static readonly Regex UrlRegex = new(@"https?://[^\s'""]+", RegexOptions.Compiled);
-    private static readonly Regex CodeRegex = new(@"\b[A-Z0-9]{4}-[A-Z0-9]{4,6}\b", RegexOptions.Compiled);
-
     private readonly ICodexCli _codex;
     private readonly AppPaths _paths;
     private readonly string _userDataFolder;
@@ -28,9 +25,8 @@ public sealed partial class LoginWindow : Window
     private readonly CancellationTokenSource _cts = new();
 
     private readonly Strings _loc = Strings.Current;
-    private bool _navigated;
+    private ICodexLoginSession? _session;
     private bool _completed;
-    private string? _deviceCode;
 
     public LoginWindow(ICodexCli codex, AppPaths paths)
     {
@@ -44,7 +40,6 @@ public sealed partial class LoginWindow : Window
         Title = _loc.LoginTitle;
         StatusText.Text = _loc.LoginPreparing;
         CleanNoteText.Text = _loc.LoginCleanNote;
-        CodeLabel.Text = _loc.LoginCodeLabel;
         CancelButton.Content = _loc.Cancel;
 
         Closed += OnClosed;
@@ -63,6 +58,7 @@ public sealed partial class LoginWindow : Window
         {
             SetStatus(_loc.LoginCodexNotFound);
             HintText.Text = _loc.LoginInstallCodex;
+            Spinner.IsActive = false;
             return;
         }
 
@@ -80,87 +76,62 @@ public sealed partial class LoginWindow : Window
             Web.CoreWebView2.NavigationStarting += OnNavigationStarting;
 
             SetStatus(_loc.LoginWaitingPage);
-            _ = RunCodexLoginAsync();
+            _ = RunLoginAsync();
         }
         catch (Exception ex)
         {
             SetStatus(_loc.LoginWebView2Failed);
             HintText.Text = _loc.LoginWebView2Hint + ex.Message;
+            Spinner.IsActive = false;
         }
     }
 
-    private async Task RunCodexLoginAsync()
+    private async Task RunLoginAsync()
     {
         try
         {
-            var result = await _codex.LoginAsync(_codexHome, HandleOutputLine,
-                TimeSpan.FromMinutes(15), _cts.Token);
+            _session = await _codex.StartChatGptLoginAsync(_codexHome, _cts.Token);
 
-            var authPath = Path.Combine(_codexHome, "auth.json");
-            if (result.Success && File.Exists(authPath))
+            // Abre a URL de autorização na sessão visitante (WebView2), nunca no navegador do sistema.
+            _dispatcher.TryEnqueue(() =>
             {
-                var bytes = await File.ReadAllBytesAsync(authPath);
-                Complete(bytes);
-            }
-            else
+                try
+                {
+                    Web.CoreWebView2.Navigate(_session.AuthUrl);
+                    SetStatus(_loc.LoginCleanOpened);
+                    HintText.Text = _loc.LoginCleanHint;
+                }
+                catch (Exception)
+                {
+                    // Navegação falhou; o app-server ainda aguarda o callback local.
+                }
+            });
+
+            var result = await _session.Completion;
+
+            if (result.Success)
             {
-                Complete(null);
+                var authPath = Path.Combine(_codexHome, "auth.json");
+                for (var i = 0; i < 30 && !File.Exists(authPath); i++)
+                    await Task.Delay(100, _cts.Token);
+
+                if (File.Exists(authPath))
+                {
+                    Complete(await File.ReadAllBytesAsync(authPath));
+                    return;
+                }
             }
+
+            ShowFailure(result.Error);
         }
         catch (OperationCanceledException)
         {
             Complete(null);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            Complete(null);
+            ShowFailure(ex.Message);
         }
-    }
-
-    private void HandleOutputLine(string rawLine)
-    {
-        var line = AnsiRegex.Replace(rawLine, string.Empty);
-
-        // Captura o código de uso único do fluxo device-auth e o exibe para o usuário digitar.
-        if (_deviceCode is null)
-        {
-            var codeMatch = CodeRegex.Match(line);
-            if (codeMatch.Success)
-            {
-                _deviceCode = codeMatch.Value;
-                _dispatcher.TryEnqueue(() =>
-                {
-                    CodeText.Text = _deviceCode;
-                    CodePanel.Visibility = Visibility.Visible;
-                });
-            }
-        }
-
-        if (_navigated) return;
-        var match = UrlRegex.Match(line);
-        if (!match.Success) return;
-
-        var url = match.Value.TrimEnd('.', ',', ')');
-        if (!url.Contains("openai.com", StringComparison.OrdinalIgnoreCase)
-            && !url.Contains("chatgpt.com", StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        _navigated = true;
-        _dispatcher.TryEnqueue(() =>
-        {
-            try
-            {
-                Web.CoreWebView2.Navigate(url);
-                SetStatus(_loc.LoginCleanOpened);
-                HintText.Text = _loc.LoginCleanHint;
-            }
-            catch (Exception)
-            {
-                // Navegação falhou; o codex device-auth ainda aguarda a autorização.
-            }
-        });
     }
 
     private void OnNavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
@@ -173,6 +144,19 @@ public sealed partial class LoginWindow : Window
     }
 
     private void OnCancelClick(object sender, RoutedEventArgs e) => Complete(null);
+
+    /// <summary>Mostra o erro na própria janela e deixa o usuário fechar (botão vira "Fechar").</summary>
+    private void ShowFailure(string? detail)
+    {
+        _dispatcher.TryEnqueue(() =>
+        {
+            if (_completed) return;
+            SetStatus(_loc.LoginFailed);
+            HintText.Text = string.IsNullOrWhiteSpace(detail) ? _loc.LoginFailedHint : detail;
+            Spinner.IsActive = false;
+            CancelButton.Content = _loc.Close;
+        });
+    }
 
     private void Complete(byte[]? result)
     {
@@ -187,8 +171,12 @@ public sealed partial class LoginWindow : Window
 
     private void OnClosed(object sender, WindowEventArgs args)
     {
+        _completed = true; // impede atualizações de UI após o fechamento (ex.: ShowFailure tardio).
         _cts.Cancel();
         _tcs.TrySetResult(null);
+        // Encerra a sessão do app-server (cancela o login e mata o processo).
+        if (_session is not null)
+            _ = _session.DisposeAsync();
         // Descartar handles do WebView2 antes de apagar (ponto 8).
         try { Web.Close(); } catch (Exception) { /* já fechando */ }
         _ = CleanupTempAsync();
@@ -196,18 +184,14 @@ public sealed partial class LoginWindow : Window
 
     private async Task CleanupTempAsync()
     {
+        // Retenta enquanto o WebView2/app-server soltam os handles; força read-only (arquivos .git do
+        // plugin-clone do app-server). Resíduos remanescentes são varridos no próximo arranque.
         foreach (var dir in new[] { _userDataFolder, _codexHome })
         {
-            for (var attempt = 0; attempt < 5; attempt++)
+            for (var attempt = 0; attempt < 8; attempt++)
             {
-                try
-                {
-                    if (Directory.Exists(dir))
-                        Directory.Delete(dir, recursive: true);
-                    break;
-                }
-                catch (IOException) { await Task.Delay(150); }
-                catch (UnauthorizedAccessException) { await Task.Delay(150); }
+                if (Infra.Io.TempCleanup.TryForceDelete(dir)) break;
+                await Task.Delay(200);
             }
         }
     }

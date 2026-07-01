@@ -38,6 +38,29 @@ public sealed class Strings
     public string RefreshAll => S("Renovar todas", "Refresh all");
     public string RefreshAllTooltip => S("Renovar todas agora", "Refresh all now");
     public string SignInOAuth => S("Entrar com OAuth", "Sign in with OAuth");
+    public string TwoFactorButton => S("2FA", "2FA");
+    public string TwoFactorTooltip => S("Gerador de código 2FA", "2FA code generator");
+
+    // Gerador 2FA (TOTP)
+    public string TotpTitle => S("Gerador de código 2FA", "2FA code generator");
+    public string TotpSubtitle => S(
+        "Cole a chave e receba um código que renova sozinho.",
+        "Paste your key and get a code that refreshes itself.");
+    public string TotpSecretLabel => S("Chave secreta (2FA)", "2FA secret key");
+    public string TotpSecretPlaceholder => S(
+        "Cole a chave secreta ou um link otpauth://",
+        "Paste the secret key or an otpauth:// link");
+    public string TotpPaste => S("Colar da área de transferência", "Paste from clipboard");
+    public string TotpCopy => S("Copiar código", "Copy code");
+    public string TotpClickToCopy => S("Clique para copiar o código", "Click to copy the code");
+    public string TotpCopied => S("Código copiado!", "Code copied!");
+    public string TotpExpiresIn(int seconds) => S($"expira em {seconds}s", $"expires in {seconds}s");
+    public string TotpInvalid => S(
+        "Chave inválida. Confira se copiou a chave completa (Base32).",
+        "Invalid key. Make sure you copied the full key (Base32).");
+    public string TotpEmptyHint => S(
+        "Cole a chave secreta do 2FA acima para gerar o código que renova a cada 30 segundos.",
+        "Paste your 2FA secret key above to generate a code that refreshes every 30 seconds.");
 
     // Estado vazio
     public string EmptyTitle => S("Nenhuma conta ainda", "No accounts yet");
@@ -168,7 +191,6 @@ public sealed class Strings
     public string LoginCleanNote => S(
         "Sessão anônima e descartável, sem cookies nem histórico.",
         "Anonymous, disposable session, no cookies or history.");
-    public string LoginCodeLabel => S("Código:", "Code:");
     public string LoginWaitingPage => S("Aguardando a página de login…", "Waiting for the login page…");
     public string LoginCodexNotFound => S("O binário do Codex não foi encontrado no PATH.", "The Codex binary was not found on PATH.");
     public string LoginInstallCodex => S(
@@ -179,11 +201,16 @@ public sealed class Strings
         "Verifique se o WebView2 Runtime (Evergreen) está instalado. ",
         "Make sure the WebView2 Runtime (Evergreen) is installed. ");
     public string LoginCleanOpened => S(
-        "Sessão limpa aberta. Entre na sua conta e informe o código ao lado.",
-        "Clean session open. Sign in and enter the code shown.");
+        "Sessão limpa aberta. Entre na sua conta do ChatGPT para continuar.",
+        "Clean session open. Sign in to your ChatGPT account to continue.");
     public string LoginCleanHint => S(
         "Sem cookies ou histórico anteriores. Ao concluir, esta janela fecha sozinha.",
         "No prior cookies or history. When done, this window closes itself.");
     public string LoginCompleting => S("Concluindo login com segurança…", "Completing login securely…");
+    public string LoginFailed => S("Não foi possível concluir o login.", "Could not complete the login.");
+    public string LoginFailedHint => S(
+        "Feche esta janela e tente novamente. Sua sessão continua limpa e nada foi alterado.",
+        "Close this window and try again. Your session stays clean and nothing was changed.");
+    public string Close => S("Fechar", "Close");
     public string Cancelar => Cancel;
 }

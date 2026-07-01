@@ -22,6 +22,8 @@ public static class AppHost
         var paths = new AppPaths();
         paths.EnsureDirectories();
         DirectoryHardening.TryRestrictToCurrentUser(paths.Root);
+        // Remove pastas efêmeras de login (WebView2/CODEX_HOME) que sobraram de sessões anteriores.
+        TempCleanup.SweepLoginTemp(paths.TempRoot);
 
         var services = new ServiceCollection();
 

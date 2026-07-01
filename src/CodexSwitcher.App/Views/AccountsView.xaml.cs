@@ -43,6 +43,22 @@ public sealed partial class AccountsView : UserControl
         await ViewModel.LoadCommand.ExecuteAsync(null);
     }
 
+    private TotpWindow? _totpWindow;
+
+    private void OnOpen2FaClick(object sender, RoutedEventArgs e)
+    {
+        // Reaproveita a janelinha se já estiver aberta (evita duplicatas).
+        if (_totpWindow is not null)
+        {
+            _totpWindow.Activate();
+            return;
+        }
+
+        _totpWindow = new TotpWindow();
+        _totpWindow.Closed += (_, _) => _totpWindow = null;
+        _totpWindow.Activate();
+    }
+
     private static AccountItemViewModel? ItemOf(object sender) =>
         (sender as FrameworkElement)?.DataContext as AccountItemViewModel;
 
