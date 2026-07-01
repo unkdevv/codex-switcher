@@ -8,6 +8,7 @@
 ![UI](https://img.shields.io/badge/UI-WinUI%203-2E9BFF)
 ![Tests](https://img.shields.io/badge/tests-66%20passing-3DDC84)
 ![Single file](https://img.shields.io/badge/build-single%20.exe-1FD1C1)
+![License](https://img.shields.io/badge/license-MIT-yellow)
 
 Codex Account Switcher is a fast, native **Windows desktop app** (WinUI 3 / .NET 10) that manages
 several Codex logins in an **encrypted local vault** and swaps the active one instantly. It keeps
@@ -17,6 +18,20 @@ to sign in again just to switch.
 ![Codex Account Switcher screenshot](docs/screenshot.png)
 
 ---
+
+## Contents
+
+- [Why](#why)
+- [Features](#features)
+- [How it works](#how-it-works)
+- [Requirements](#requirements)
+- [Getting started](#getting-started)
+- [Building](#building)
+- [Configuration](#configuration)
+- [Security](#security)
+- [Project structure](#project-structure)
+- [Tech stack](#tech-stack)
+- [License](#license)
 
 ## Why
 
@@ -158,4 +173,4 @@ manage Codex CLI credentials, no re-login.
 
 ## License
 
-No license file yet — add one before publishing (MIT recommended for an open-source tool).
+[MIT](LICENSE)
