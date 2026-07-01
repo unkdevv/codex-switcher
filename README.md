@@ -69,8 +69,6 @@ swap as a reversible transaction: **confirm → close Codex apps → write-back 
 write new slot (atomic) → update metadata → reopen apps**. If any step fails, the original slot is
 restored from the backup and the apps are reopened on the original account.
 
-See [`BUSINESS_RULES.md`](BUSINESS_RULES.md) for the complete behavior spec and every edge case.
-
 ## Requirements
 
 - Windows 10 / 11 (x64)
@@ -80,13 +78,11 @@ See [`BUSINESS_RULES.md`](BUSINESS_RULES.md) for the complete behavior spec and 
 
 ## Getting started
 
-Grab a build (or produce one — see below) and run `CodexSwitcher.App.exe`. On first launch the app
+Grab a build (or produce one — see below) and run `CodexSwitcher.exe`. On first launch the app
 offers to **import the account already logged into Codex** on your machine, or to **add a new one**
 via a clean OAuth session.
 
 ## Building
-
-> **Portuguese, step-by-step guide (for the author): [`COMO-COMPILAR.md`](COMO-COMPILAR.md).**
 
 ### Option A — Command line (.NET CLI)
 
@@ -124,8 +120,9 @@ dotnet publish src/CodexSwitcher.App/CodexSwitcher.App.csproj -c Release -r win-
   -p:DebugType=none -p:DebugSymbols=false
 ```
 
-Output: `src/CodexSwitcher.App/bin/Release/net10.0-windows10.0.19041.0/win-x64/publish/CodexSwitcher.App.exe`
-(~210 MB, self-contained). Full details in [`COMO-COMPILAR.md`](COMO-COMPILAR.md).
+Output: `src/CodexSwitcher.App/bin/Release/net10.0-windows10.0.19041.0/win-x64/publish/CodexSwitcher.exe`
+(~210 MB, self-contained). Don't rename the file after publishing: this unpackaged WinUI 3 app ties
+its resource/manifest lookup to the exe's own filename, and renaming it breaks activation.
 
 ## Configuration
 
@@ -153,8 +150,6 @@ src/
   CodexSwitcher.App      WinUI 3 UI (views, view models, ephemeral login, DI, localization)
 tests/
   CodexSwitcher.Core.Tests   xUnit — vault, atomic writes, switch/rollback, refresh, reconciliation
-BUSINESS_RULES.md        Behavior specification
-COMO-COMPILAR.md         Build guide (Portuguese)
 ```
 
 ## Tech stack
