@@ -1,8 +1,10 @@
+using System.Linq;
 using CodexSwitcher.App.Localization;
 using CodexSwitcher.App.Services;
 using CodexSwitcher.App.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace CodexSwitcher.App.Views;
 
@@ -85,5 +87,22 @@ public sealed partial class AccountsView : UserControl
     private void OnMarkReLoginClick(object sender, RoutedEventArgs e)
     {
         if (ItemOf(sender) is { } item) ViewModel.MarkNeedsReLoginCommand.Execute(item);
+    }
+
+    private void OnMarkUsedClick(object sender, RoutedEventArgs e)
+    {
+        if (ItemOf(sender) is { } item) ViewModel.MarkUsedCommand.Execute(item);
+    }
+
+    private void OnUnmarkUsedClick(object sender, RoutedEventArgs e)
+    {
+        if (ItemOf(sender) is { } item) ViewModel.UnmarkUsedCommand.Execute(item);
+    }
+
+    private void OnAccountsReordered(object sender, DragItemsCompletedEventArgs e)
+    {
+        if (e.DropResult != DataPackageOperation.Move) return;
+        var orderedIds = ViewModel.Accounts.Select(a => a.Id).ToList();
+        ViewModel.ReorderCommand.Execute(orderedIds);
     }
 }

@@ -38,7 +38,29 @@ public sealed class ProfileService
     public ReconciliationResult Load()
     {
         Profiles = _store.LoadAll();
+        EnsureSortOrderInitialized();
         return Reconcile();
+    }
+
+    /// <summary>
+    /// Perfis salvos antes da feature de reordenação não têm <see cref="ProfileMetadata.SortOrder"/>
+    /// definido (todos ficam em 0). Nesse caso, atribui uma ordem inicial replicando o critério
+    /// antigo (ativa primeiro, depois trocada/criada mais recentemente), preservando a ordem que o
+    /// usuário já via. Uma vez que existam valores distintos, respeita a ordem manual dali em diante.
+    /// </summary>
+    private void EnsureSortOrderInitialized()
+    {
+        if (Profiles.Count < 2) return;
+        if (Profiles.Select(p => p.SortOrder).Distinct().Count() > 1) return;
+
+        var legacyOrder = Profiles
+            .OrderByDescending(p => p.IsActive)
+            .ThenByDescending(p => p.LastSwitchedAt ?? DateTimeOffset.MinValue)
+            .ThenByDescending(p => p.CreatedAt)
+            .ToList();
+        for (var i = 0; i < legacyOrder.Count; i++)
+            legacyOrder[i].SortOrder = i;
+        _store.SaveAll(Profiles);
     }
 
     /// <summary>Reconcilia; em caso de drift (Codex renovou externamente) faz write-back no cofre.</summary>
@@ -121,6 +143,7 @@ public sealed class ProfileService
             CreatedAt = _clock.UtcNow,
             LastRefreshedAt = file?.LastRefresh ?? _clock.UtcNow,
             HealthStatus = HealthStatus.Valid,
+            SortOrder = Profiles.Count == 0 ? 0 : Profiles.Max(p => p.SortOrder) + 1,
         };
         profile.BlobFingerprint = _vault.SaveBlob(profile.Id, authJson);
         Profiles.Add(profile);
@@ -156,6 +179,44 @@ public sealed class ProfileService
         p.LastError = ErrorInfo.Create(ErrorCategory.RefreshTokenExpired,
             "Marcado manualmente como precisa re-login.", _clock.UtcNow);
         _store.SaveAll(Profiles);
+    }
+
+    /// <summary>Marca um perfil como "usado" agora; o selo visual expira sozinho após 24h.</summary>
+    public void MarkUsed(Guid id)
+    {
+        var p = Profiles.FirstOrDefault(x => x.Id == id);
+        if (p is null) return;
+        p.MarkedUsedAt = _clock.UtcNow;
+        _store.SaveAll(Profiles);
+        _audit.Record("mark-used", "ok", p.DisplayName);
+    }
+
+    /// <summary>Remove o selo de "usado" manualmente, antes da expiração natural de 24h.</summary>
+    public void UnmarkUsed(Guid id)
+    {
+        var p = Profiles.FirstOrDefault(x => x.Id == id);
+        if (p is null) return;
+        p.MarkedUsedAt = null;
+        _store.SaveAll(Profiles);
+        _audit.Record("unmark-used", "ok", p.DisplayName);
+    }
+
+    /// <summary>
+    /// Reordena os perfis conforme a lista de ids fornecida (ex.: resultado de um drag-and-drop),
+    /// atribuindo <see cref="ProfileMetadata.SortOrder"/> sequencial. Ids desconhecidos são ignorados.
+    /// </summary>
+    public void Reorder(IReadOnlyList<Guid> orderedIds)
+    {
+        ArgumentNullException.ThrowIfNull(orderedIds);
+        var order = 0;
+        foreach (var id in orderedIds)
+        {
+            var p = Profiles.FirstOrDefault(x => x.Id == id);
+            if (p is null) continue;
+            p.SortOrder = order++;
+        }
+        _store.SaveAll(Profiles);
+        _audit.Record("reorder", "ok");
     }
 
     public void Save() => _store.SaveAll(Profiles);

@@ -80,6 +80,57 @@ public sealed class ProfileServiceTests
         Assert.Single(env.Service.Profiles);
         Assert.Equal("One", env.Service.Profiles[0].Nickname);
     }
+
+    [Fact]
+    public void MarkUsed_SetsTimestampToNow()
+    {
+        using var env = new Env();
+        var p = env.Service.AddFromAuthJson(Sample.AuthJson(idToken: Sample.Jwt(sub: "s")), "X");
+
+        env.Service.MarkUsed(p.Id);
+
+        Assert.Equal(env.Clock.UtcNow, p.MarkedUsedAt);
+    }
+
+    [Fact]
+    public void UnmarkUsed_ClearsTimestamp()
+    {
+        using var env = new Env();
+        var p = env.Service.AddFromAuthJson(Sample.AuthJson(idToken: Sample.Jwt(sub: "s")), "X");
+        env.Service.MarkUsed(p.Id);
+
+        env.Service.UnmarkUsed(p.Id);
+
+        Assert.Null(p.MarkedUsedAt);
+    }
+
+    [Fact]
+    public void Reorder_AssignsSequentialSortOrder()
+    {
+        using var env = new Env();
+        var a = env.Service.AddFromAuthJson(Sample.AuthJson(idToken: Sample.Jwt(sub: "a")), "A");
+        var b = env.Service.AddFromAuthJson(Sample.AuthJson(idToken: Sample.Jwt(sub: "b")), "B");
+        var c = env.Service.AddFromAuthJson(Sample.AuthJson(idToken: Sample.Jwt(sub: "c")), "C");
+
+        env.Service.Reorder([c.Id, a.Id, b.Id]);
+
+        Assert.Equal(0, c.SortOrder);
+        Assert.Equal(1, a.SortOrder);
+        Assert.Equal(2, b.SortOrder);
+    }
+
+    [Fact]
+    public void Reorder_PersistsAcrossReload()
+    {
+        using var env = new Env();
+        var a = env.Service.AddFromAuthJson(Sample.AuthJson(idToken: Sample.Jwt(sub: "a")), "A");
+        var b = env.Service.AddFromAuthJson(Sample.AuthJson(idToken: Sample.Jwt(sub: "b")), "B");
+
+        env.Service.Reorder([b.Id, a.Id]);
+        env.Service.Load();
+
+        Assert.Equal("B", env.Service.Profiles.OrderBy(p => p.SortOrder).First().Nickname);
+    }
 }
 
 public sealed class RelativeTimeTests

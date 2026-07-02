@@ -62,16 +62,22 @@ public sealed class BadgeToBrushConverter : IValueConverter
     public object ConvertBack(object value, Type t, object p, string l) => throw new NotSupportedException();
 }
 
-public sealed class ActiveToBorderBrushConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, string language) =>
-        Brushes.Resource(value is true ? "BrandAccentBrush" : "CardStrokeColorDefaultBrush");
-    public object ConvertBack(object value, Type t, object p, string l) => throw new NotSupportedException();
-}
-
 public sealed class ActiveToBackgroundConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>
         Brushes.Resource(value is true ? "BrandAccentSoftBrush" : "CardBackgroundFillColorDefaultBrush");
+    public object ConvertBack(object value, Type t, object p, string l) => throw new NotSupportedException();
+}
+
+/// <summary>Borda do card: ativa (acento) &gt; marcada como usada nas últimas 24h (verde) &gt; padrão.</summary>
+public sealed class CardBorderBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        value switch
+        {
+            AccountItemViewModel { IsActive: true } => Brushes.Resource("BrandAccentBrush"),
+            AccountItemViewModel { IsMarkedUsed: true } => Brushes.Resource("HealthOkBrush"),
+            _ => Brushes.Resource("CardStrokeColorDefaultBrush"),
+        };
     public object ConvertBack(object value, Type t, object p, string l) => throw new NotSupportedException();
 }

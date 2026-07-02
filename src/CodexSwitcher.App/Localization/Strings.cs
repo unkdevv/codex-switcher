@@ -82,6 +82,8 @@ public sealed class Strings
     public string RefreshNow => S("Renovar agora", "Refresh now");
     public string Rename => S("Renomear", "Rename");
     public string MarkNeedsReLogin => S("Marcar: precisa re-login", "Mark: needs re-login");
+    public string MarkUsed => S("Marcar como usado", "Mark as used");
+    public string UnmarkUsed => S("Desmarcar como usado", "Unmark as used");
     public string Remove => S("Remover", "Remove");
     public string MoreActions => S("Mais ações", "More actions");
 

@@ -14,8 +14,8 @@
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
         <conv:BadgeToTextConverter x:Key="BadgeText" />
         <conv:BadgeToBrushConverter x:Key="BadgeBrush" />
-        <conv:ActiveToBorderBrushConverter x:Key="ActiveBorder" />
         <conv:ActiveToBackgroundConverter x:Key="ActiveBg" />
+        <conv:CardBorderBrushConverter x:Key="CardBorder" />
     </UserControl.Resources>
 
     <Grid>
@@ -115,7 +115,9 @@
 
                 <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.Accounts}"
                           SelectionMode="None" Padding="24,0,24,24"
-                          ScrollViewer.HorizontalScrollMode="Disabled">
+                          ScrollViewer.HorizontalScrollMode="Disabled"
+                          CanReorderItems="True" CanDragItems="True" AllowDrop="True"
+                          DragItemsCompleted="OnAccountsReordered">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -126,7 +128,7 @@
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="vm:AccountItemViewModel">
                             <Border CornerRadius="{StaticResource CardCornerRadius}" BorderThickness="1.5" Padding="16"
-                                    BorderBrush="{x:Bind IsActive, Converter={StaticResource ActiveBorder}}"
+                                    BorderBrush="{x:Bind Converter={StaticResource CardBorder}}"
                                     Background="{x:Bind IsActive, Converter={StaticResource ActiveBg}}">
                                 <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="14">
                                     <Border Grid.Column="0" Width="48" Height="48"
@@ -185,6 +187,14 @@
                                                 </MenuFlyoutItem>
                                                 <MenuFlyoutItem Text="{x:Bind RenameLabel}" Click="OnRenameItemClick">
                                                     <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8AC;" /></MenuFlyoutItem.Icon>
+                                                </MenuFlyoutItem>
+                                                <MenuFlyoutItem Text="{x:Bind MarkUsedLabel}" Click="OnMarkUsedClick"
+                                                                Visibility="{x:Bind IsMarkedUsed, Converter={StaticResource InvBoolToVis}}">
+                                                    <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE73E;" /></MenuFlyoutItem.Icon>
+                                                </MenuFlyoutItem>
+                                                <MenuFlyoutItem Text="{x:Bind UnmarkUsedLabel}" Click="OnUnmarkUsedClick"
+                                                                Visibility="{x:Bind IsMarkedUsed, Converter={StaticResource BoolToVis}}">
+                                                    <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE894;" /></MenuFlyoutItem.Icon>
                                                 </MenuFlyoutItem>
                                                 <MenuFlyoutItem Text="{x:Bind MarkReLoginLabel}" Click="OnMarkReLoginClick">
                                                     <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE7BA;" /></MenuFlyoutItem.Icon>

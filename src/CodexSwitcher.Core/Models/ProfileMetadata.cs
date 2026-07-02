@@ -51,6 +51,13 @@ public sealed class ProfileMetadata
     /// <summary>Versão do schema para migração futura.</summary>
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
+    /// <summary>Momento em que o usuário marcou manualmente este perfil como "usado" (UTC). O selo
+    /// visual (borda verde) dura 24h a partir daqui. Nulo se nunca marcado ou já expirado.</summary>
+    public DateTimeOffset? MarkedUsedAt { get; set; }
+
+    /// <summary>Posição de exibição definida pelo usuário via drag-and-drop (crescente).</summary>
+    public int SortOrder { get; set; }
+
     /// <summary>Nome de exibição preferido: apelido, senão e-mail, senão id curto.</summary>
     public string DisplayName =>
         !string.IsNullOrWhiteSpace(Nickname) ? Nickname

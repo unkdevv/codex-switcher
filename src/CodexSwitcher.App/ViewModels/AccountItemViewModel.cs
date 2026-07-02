@@ -46,6 +46,7 @@ public sealed class AccountItemViewModel
 
         HealthText = ComputeHealthText(profile, now, settings);
         NeedsAttention = Badge is AccountBadge.NeedsReLogin or AccountBadge.Error;
+        IsMarkedUsed = profile.MarkedUsedAt is { } markedAt && (now - markedAt) < TimeSpan.FromHours(24);
     }
 
     public ProfileMetadata Profile { get; }
@@ -61,6 +62,9 @@ public sealed class AccountItemViewModel
     public string HealthText { get; }
     public bool NeedsAttention { get; }
 
+    /// <summary>Marcado como "usado" nas últimas 24h. Ver <see cref="ProfileMetadata.MarkedUsedAt"/>.</summary>
+    public bool IsMarkedUsed { get; }
+
     public bool CanSwitch => !IsActive && Badge != AccountBadge.Unavailable;
     public bool IsRefreshing => Badge == AccountBadge.Refreshing;
 
@@ -70,6 +74,8 @@ public sealed class AccountItemViewModel
     public string RefreshNowLabel => Loc.RefreshNow;
     public string RenameLabel => Loc.Rename;
     public string MarkReLoginLabel => Loc.MarkNeedsReLogin;
+    public string MarkUsedLabel => Loc.MarkUsed;
+    public string UnmarkUsedLabel => Loc.UnmarkUsed;
     public string RemoveLabel => Loc.Remove;
     public string MoreActionsLabel => Loc.MoreActions;
 

@@ -88,6 +88,10 @@ public sealed partial class MainViewModel : ObservableObject
                 _profiles.Profiles, item.Id, SwitchExecutionOptions.From(_settings)));
         });
 
+        // A troca realmente saiu da conta anterior: marca-a como usada automaticamente.
+        if (from is not null && result?.Outcome is SwitchOutcome.Success or SwitchOutcome.SuccessWithReopenWarning)
+            _profiles.MarkUsed(from.Id);
+
         RebuildList();
         if (result is not null)
             ShowSwitchResult(result, item.DisplayName);
@@ -194,6 +198,32 @@ public sealed partial class MainViewModel : ObservableObject
         RebuildList();
     }
 
+    [RelayCommand]
+    private void MarkUsed(AccountItemViewModel? item)
+    {
+        if (item is null) return;
+        _profiles.MarkUsed(item.Id);
+        RebuildList();
+    }
+
+    [RelayCommand]
+    private void UnmarkUsed(AccountItemViewModel? item)
+    {
+        if (item is null) return;
+        _profiles.UnmarkUsed(item.Id);
+        RebuildList();
+    }
+
+    /// <summary>Persiste a nova ordem (drag-and-drop). Ignorado durante uma busca, onde a ordem visível é ambígua.</summary>
+    [RelayCommand]
+    private void Reorder(IReadOnlyList<Guid>? orderedIds)
+    {
+        if (orderedIds is null || orderedIds.Count == 0) return;
+        if (!string.IsNullOrEmpty(SearchText)) return;
+        _profiles.Reorder(orderedIds);
+        RebuildList();
+    }
+
     private void RebuildList()
     {
         _profiles.Reconcile();
@@ -201,8 +231,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         _all.Clear();
         var ordered = _profiles.Profiles
-            .OrderByDescending(p => p.IsActive)
-            .ThenByDescending(p => p.LastSwitchedAt ?? DateTimeOffset.MinValue)
+            .OrderBy(p => p.SortOrder)
             .ThenByDescending(p => p.CreatedAt);
         foreach (var p in ordered)
             _all.Add(new AccountItemViewModel(p, now, _settings));
