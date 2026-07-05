@@ -202,6 +202,18 @@ public sealed class Strings
     public string LoginWebView2Hint => S(
         "Verifique se o WebView2 Runtime (Evergreen) está instalado. ",
         "Make sure the WebView2 Runtime (Evergreen) is installed. ");
+    public string LoginWebView2Missing => S(
+        "O WebView2 Runtime não está instalado neste Windows.",
+        "The WebView2 Runtime is not installed on this Windows.");
+    public string LoginWebView2MissingHint => S(
+        "Necessário para abrir a página de login (o Windows 10 não vem com ele por padrão).",
+        "Required to open the sign-in page (Windows 10 does not include it by default).");
+    public string LoginWebView2InstallButton => S("Baixar e instalar", "Download and install");
+    public string LoginWebView2Installing => S(
+        "Baixando e instalando o WebView2 Runtime…", "Downloading and installing the WebView2 Runtime…");
+    public string LoginWebView2InstallFailed => S(
+        "Não foi possível instalar automaticamente. Tente novamente ou instale manualmente pelo site da Microsoft.",
+        "Could not install it automatically. Try again or install it manually from Microsoft's site.");
     public string LoginCleanOpened => S(
         "Sessão limpa aberta. Entre na sua conta do ChatGPT para continuar.",
         "Clean session open. Sign in to your ChatGPT account to continue.");

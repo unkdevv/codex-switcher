@@ -1,8 +1,11 @@
+using System.Diagnostics;
+using System.Net.Http;
 using CodexSwitcher.App.Localization;
 using CodexSwitcher.Core.Abstractions;
 using CodexSwitcher.Infra;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
 
 namespace CodexSwitcher.App.Views;
@@ -41,6 +44,7 @@ public sealed partial class LoginWindow : Window
         StatusText.Text = _loc.LoginPreparing;
         CleanNoteText.Text = _loc.LoginCleanNote;
         CancelButton.Content = _loc.Cancel;
+        ToolTipService.SetToolTip(TwoFactorButton, _loc.TwoFactorTooltip);
 
         Closed += OnClosed;
     }
@@ -59,6 +63,12 @@ public sealed partial class LoginWindow : Window
             SetStatus(_loc.LoginCodexNotFound);
             HintText.Text = _loc.LoginInstallCodex;
             Spinner.IsActive = false;
+            return;
+        }
+
+        if (!IsWebView2RuntimeInstalled())
+        {
+            ShowWebView2Missing();
             return;
         }
 
@@ -83,6 +93,89 @@ public sealed partial class LoginWindow : Window
             SetStatus(_loc.LoginWebView2Failed);
             HintText.Text = _loc.LoginWebView2Hint + ex.Message;
             Spinner.IsActive = false;
+        }
+    }
+
+    /// <summary>Windows 10 não vem com o WebView2 Runtime pré-instalado (ao contrário do Windows 11);
+    /// checagem leve antes de tentar abrir a sessão para distinguir isso de outras falhas.</summary>
+    private static bool IsWebView2RuntimeInstalled()
+    {
+        try
+        {
+            return !string.IsNullOrEmpty(CoreWebView2Environment.GetAvailableBrowserVersionString(null));
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private void ShowWebView2Missing()
+    {
+        SetStatus(_loc.LoginWebView2Missing);
+        HintText.Text = _loc.LoginWebView2MissingHint;
+        InstallWebView2Button.Content = _loc.LoginWebView2InstallButton;
+        InstallWebView2Button.Visibility = Visibility.Visible;
+        Spinner.IsActive = false;
+    }
+
+    /// <summary>Baixa o bootstrapper oficial (Evergreen, ~2 MB) e o executa; ao concluir, tenta o login
+    /// de novo. Só o bootstrapper é obtido em tempo real (empacotar o runtime completo, ~150 MB e sem
+    /// auto-atualização, infla o instalador à toa); ver pedido do usuário 2026-07-04.</summary>
+    private async void OnInstallWebView2Click(object sender, RoutedEventArgs e)
+    {
+        InstallWebView2Button.IsEnabled = false;
+        SetStatus(_loc.LoginWebView2Installing);
+        HintText.Text = string.Empty;
+        Spinner.IsActive = true;
+
+        var installed = await TryInstallWebView2RuntimeAsync() && IsWebView2RuntimeInstalled();
+
+        if (_completed) return;
+
+        if (installed)
+        {
+            InstallWebView2Button.Visibility = Visibility.Collapsed;
+            InstallWebView2Button.IsEnabled = true;
+            await StartAsync();
+            return;
+        }
+
+        InstallWebView2Button.IsEnabled = true;
+        SetStatus(_loc.LoginWebView2InstallFailed);
+        HintText.Text = _loc.LoginWebView2MissingHint;
+        Spinner.IsActive = false;
+    }
+
+    private async Task<bool> TryInstallWebView2RuntimeAsync()
+    {
+        // Fwlink fixo e documentado pela Microsoft para o Evergreen Bootstrapper do WebView2.
+        const string bootstrapperUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+        var bootstrapperPath = Path.Combine(_paths.TempRoot, $"MicrosoftEdgeWebview2Setup-{Guid.NewGuid():N}.exe");
+
+        try
+        {
+            Directory.CreateDirectory(_paths.TempRoot);
+
+            using (var http = new HttpClient())
+            {
+                var bytes = await http.GetByteArrayAsync(bootstrapperUrl, _cts.Token);
+                await File.WriteAllBytesAsync(bootstrapperPath, bytes, _cts.Token);
+            }
+
+            using var proc = Process.Start(new ProcessStartInfo(bootstrapperPath) { UseShellExecute = true });
+            if (proc is null) return false;
+
+            await proc.WaitForExitAsync(_cts.Token);
+            return proc.ExitCode == 0;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+        finally
+        {
+            try { if (File.Exists(bootstrapperPath)) File.Delete(bootstrapperPath); } catch (Exception) { /* best-effort */ }
         }
     }
 
@@ -179,6 +272,9 @@ public sealed partial class LoginWindow : Window
             _ = _session.DisposeAsync();
         // Descartar handles do WebView2 antes de apagar (ponto 8).
         try { Web.Close(); } catch (Exception) { /* já fechando */ }
+        // O popup de 2FA é só ocultado ao perder foco (não recriado), então o timer sobreviveria à
+        // janela se não for parado aqui explicitamente.
+        TotpPanel.StopTimer();
         _ = CleanupTempAsync();
     }
 
