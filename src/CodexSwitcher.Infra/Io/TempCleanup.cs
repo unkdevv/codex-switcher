@@ -1,19 +1,20 @@
 namespace CodexSwitcher.Infra.Io;
 
 /// <summary>
-/// Limpeza das pastas efêmeras de login (WebView2 <c>codex-webview-*</c> e CODEX_HOME
-/// <c>codex-login-*</c>) sob o TempRoot. O WebView2 grava cache/cookies/histórico no seu perfil
-/// isolado durante o login; apagamos a pasta ao fechar, mas handles ainda presos ou arquivos
-/// read-only do plugin-clone do app-server (.git) podem impedir a exclusão. Este helper força a
-/// exclusão (limpa atributos read-only) e varre resíduos de sessões anteriores na inicialização.
+/// Limpeza das pastas efêmeras de perfis descartáveis (WebView2 <c>codex-webview-*</c> do login,
+/// CODEX_HOME <c>codex-login-*</c> do login, e <c>codex-browser-*</c> de cada aba do navegador
+/// privado) sob o TempRoot. O WebView2 grava cache/cookies/histórico no seu perfil isolado; apagamos
+/// a pasta ao fechar, mas handles ainda presos ou arquivos read-only do plugin-clone do app-server
+/// (.git) podem impedir a exclusão. Este helper força a exclusão (limpa atributos read-only) e varre
+/// resíduos de sessões anteriores na inicialização.
 /// </summary>
 public static class TempCleanup
 {
-    private static readonly string[] LoginPrefixes = ["codex-webview-", "codex-login-"];
+    private static readonly string[] EphemeralPrefixes = ["codex-webview-", "codex-login-", "codex-browser-"];
 
     /// <summary>
-    /// Apaga, na inicialização, quaisquer pastas de login que sobraram de execuções anteriores.
-    /// Best-effort: nenhuma sessão de login está ativa no arranque, então é seguro varrer tudo.
+    /// Apaga, na inicialização, quaisquer pastas efêmeras que sobraram de execuções anteriores.
+    /// Best-effort: nenhuma sessão de login/navegador está ativa no arranque, então é seguro varrer tudo.
     /// </summary>
     public static void SweepLoginTemp(string tempRoot)
     {
@@ -22,7 +23,7 @@ public static class TempCleanup
         foreach (var dir in EnumerateDirs(tempRoot))
         {
             var name = Path.GetFileName(dir);
-            if (LoginPrefixes.Any(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+            if (EphemeralPrefixes.Any(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
                 TryForceDelete(dir);
         }
     }

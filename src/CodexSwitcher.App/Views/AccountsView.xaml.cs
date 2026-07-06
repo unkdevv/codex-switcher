@@ -2,6 +2,7 @@ using System.Linq;
 using CodexSwitcher.App.Localization;
 using CodexSwitcher.App.Services;
 using CodexSwitcher.App.ViewModels;
+using CodexSwitcher.Infra;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
@@ -59,6 +60,24 @@ public sealed partial class AccountsView : UserControl
         _totpWindow = new TotpWindow();
         _totpWindow.Closed += (_, _) => _totpWindow = null;
         _totpWindow.Activate();
+    }
+
+    private PrivateBrowserWindow? _browserWindow;
+
+    private void OnOpenBrowserClick(object sender, RoutedEventArgs e)
+    {
+        // Reaproveita a janela se já estiver aberta (evita duplicatas).
+        if (_browserWindow is not null)
+        {
+            _browserWindow.Activate();
+            return;
+        }
+
+        var paths = AppHost.Services.GetService(typeof(AppPaths)) as AppPaths
+                    ?? throw new InvalidOperationException("AppPaths não registrado.");
+        _browserWindow = new PrivateBrowserWindow(paths);
+        _browserWindow.Closed += (_, _) => _browserWindow = null;
+        _browserWindow.Activate();
     }
 
     private static AccountItemViewModel? ItemOf(object sender) =>

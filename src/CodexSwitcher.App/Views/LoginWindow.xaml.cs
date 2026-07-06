@@ -1,6 +1,5 @@
-using System.Diagnostics;
-using System.Net.Http;
 using CodexSwitcher.App.Localization;
+using CodexSwitcher.App.Services;
 using CodexSwitcher.Core.Abstractions;
 using CodexSwitcher.Infra;
 using Microsoft.UI.Dispatching;
@@ -66,7 +65,7 @@ public sealed partial class LoginWindow : Window
             return;
         }
 
-        if (!IsWebView2RuntimeInstalled())
+        if (!WebView2Bootstrap.IsRuntimeInstalled())
         {
             ShowWebView2Missing();
             return;
@@ -96,20 +95,6 @@ public sealed partial class LoginWindow : Window
         }
     }
 
-    /// <summary>Windows 10 não vem com o WebView2 Runtime pré-instalado (ao contrário do Windows 11);
-    /// checagem leve antes de tentar abrir a sessão para distinguir isso de outras falhas.</summary>
-    private static bool IsWebView2RuntimeInstalled()
-    {
-        try
-        {
-            return !string.IsNullOrEmpty(CoreWebView2Environment.GetAvailableBrowserVersionString(null));
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-    }
-
     private void ShowWebView2Missing()
     {
         SetStatus(_loc.LoginWebView2Missing);
@@ -119,9 +104,8 @@ public sealed partial class LoginWindow : Window
         Spinner.IsActive = false;
     }
 
-    /// <summary>Baixa o bootstrapper oficial (Evergreen, ~2 MB) e o executa; ao concluir, tenta o login
-    /// de novo. Só o bootstrapper é obtido em tempo real (empacotar o runtime completo, ~150 MB e sem
-    /// auto-atualização, infla o instalador à toa); ver pedido do usuário 2026-07-04.</summary>
+    /// <summary>Baixa e instala o WebView2 Runtime via <see cref="WebView2Bootstrap"/>; ao concluir,
+    /// tenta o login de novo. Ver pedido do usuário 2026-07-04.</summary>
     private async void OnInstallWebView2Click(object sender, RoutedEventArgs e)
     {
         InstallWebView2Button.IsEnabled = false;
@@ -129,7 +113,7 @@ public sealed partial class LoginWindow : Window
         HintText.Text = string.Empty;
         Spinner.IsActive = true;
 
-        var installed = await TryInstallWebView2RuntimeAsync() && IsWebView2RuntimeInstalled();
+        var installed = await WebView2Bootstrap.TryInstallRuntimeAsync(_paths.TempRoot, _cts.Token);
 
         if (_completed) return;
 
@@ -145,38 +129,6 @@ public sealed partial class LoginWindow : Window
         SetStatus(_loc.LoginWebView2InstallFailed);
         HintText.Text = _loc.LoginWebView2MissingHint;
         Spinner.IsActive = false;
-    }
-
-    private async Task<bool> TryInstallWebView2RuntimeAsync()
-    {
-        // Fwlink fixo e documentado pela Microsoft para o Evergreen Bootstrapper do WebView2.
-        const string bootstrapperUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
-        var bootstrapperPath = Path.Combine(_paths.TempRoot, $"MicrosoftEdgeWebview2Setup-{Guid.NewGuid():N}.exe");
-
-        try
-        {
-            Directory.CreateDirectory(_paths.TempRoot);
-
-            using (var http = new HttpClient())
-            {
-                var bytes = await http.GetByteArrayAsync(bootstrapperUrl, _cts.Token);
-                await File.WriteAllBytesAsync(bootstrapperPath, bytes, _cts.Token);
-            }
-
-            using var proc = Process.Start(new ProcessStartInfo(bootstrapperPath) { UseShellExecute = true });
-            if (proc is null) return false;
-
-            await proc.WaitForExitAsync(_cts.Token);
-            return proc.ExitCode == 0;
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-        finally
-        {
-            try { if (File.Exists(bootstrapperPath)) File.Delete(bootstrapperPath); } catch (Exception) { /* best-effort */ }
-        }
     }
 
     private async Task RunLoginAsync()

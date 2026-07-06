@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="CodexSwitcher.App.Views.PrivateBrowserWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Navegador privado">
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <!-- O TabView serve só de faixa de abas (TabViewItem.Content fica vazio): conteúdo de aba no
+         WinUI mede pelo tamanho do filho, e o WebView2 não tem tamanho intrínseco (ficaria com altura
+         zero); além disso o TabView descarrega o conteúdo ao trocar de aba, o que recarregaria a
+         página. As abas em si moram no TabHost abaixo, alternadas por Visibility. -->
+    <Grid RowDefinitions="Auto,*">
+        <TabView Grid.Row="0" x:Name="Tabs" Visibility="Collapsed"
+                 TabWidthMode="Equal" VerticalAlignment="Top"
+                 AddTabButtonClick="OnAddTabButtonClick"
+                 TabCloseRequested="OnTabCloseRequested"
+                 SelectionChanged="OnTabSelectionChanged" />
+
+        <Grid Grid.Row="1" x:Name="TabHost"
+              Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" />
+
+        <StackPanel Grid.Row="1" x:Name="MissingRuntimePanel" Visibility="Collapsed"
+                    VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" MaxWidth="360">
+            <TextBlock x:Name="MissingTitleText" FontWeight="SemiBold" TextWrapping="Wrap"
+                       TextAlignment="Center" />
+            <TextBlock x:Name="MissingHintText" Opacity="0.7" FontSize="12" TextWrapping="Wrap"
+                       TextAlignment="Center" />
+            <Button x:Name="InstallWebView2Button" Click="OnInstallWebView2Click"
+                    HorizontalAlignment="Center"
+                    Background="{ThemeResource BrandAccentBrush}" Foreground="{ThemeResource BrandOnAccentBrush}" />
+            <ProgressRing x:Name="InstallSpinner" IsActive="False" Width="20" Height="20"
+                          HorizontalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</Window>

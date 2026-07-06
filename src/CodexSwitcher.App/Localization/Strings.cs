@@ -40,6 +40,20 @@ public sealed class Strings
     public string SignInOAuth => S("Entrar com OAuth", "Sign in with OAuth");
     public string TwoFactorButton => S("2FA", "2FA");
     public string TwoFactorTooltip => S("Gerador de código 2FA", "2FA code generator");
+    public string BrowserButton => S("Navegador", "Browser");
+    public string BrowserTooltip => S(
+        "Abrir navegador privado temporário", "Open temporary private browser");
+
+    // Navegador privado (abas isoladas)
+    public string BrowserWindowTitle => S("Navegador privado", "Private browser");
+    public string BrowserNewTabHeader => S("Nova aba", "New tab");
+    public string BrowserBackTooltip => S("Voltar", "Back");
+    public string BrowserForwardTooltip => S("Avançar", "Forward");
+    public string BrowserReloadTooltip => S("Recarregar", "Reload");
+    public string BrowserAddressPlaceholder => S("Digite uma URL ou pesquise…", "Type a URL or search…");
+    public string BrowserWebView2MissingHint => S(
+        "Necessário para o navegador funcionar (o Windows 10 não vem com ele por padrão).",
+        "Required for the browser to work (Windows 10 does not include it by default).");
 
     // Gerador 2FA (TOTP)
     public string TotpTitle => S("Gerador de código 2FA", "2FA code generator");
